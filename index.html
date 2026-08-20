@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Abluxxen</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; user-select:none; -webkit-tap-highlight-color:transparent; }
+    html, body { width:100%; height:100%; overflow:hidden; background:#1a2a3a; font-family:'Segoe UI', system-ui, sans-serif; color:#fff; touch-action:pan-x; }
+    #app { width:100%; height:100%; display:flex; flex-direction:column; background:linear-gradient(145deg, #1e2f3f, #0f1a24); position:relative; overflow:hidden; }
+
+    .header { display:flex; justify-content:space-between; align-items:center; padding:10px 16px 6px; flex-shrink:0; background:rgba(0,0,0,0.2); }
+    .header h1 { font-weight:300; font-size:1.6rem; letter-spacing:2px; background:linear-gradient(90deg,#f7d875,#d4a017); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    .header .settings-link { color:rgba(255,255,255,0.6); text-decoration:none; font-size:0.85rem; padding:4px 12px; border-radius:20px; border:1px solid rgba(255,255,255,0.1); cursor:pointer; }
+
+    .game-board { flex:1; display:flex; flex-direction:column; padding:4px 8px 8px; overflow:hidden; position:relative; }
+
+    .opponents { display:flex; justify-content:space-around; gap:4px; flex-shrink:0; margin-bottom:4px; }
+    .opponent { display:flex; flex-direction:column; align-items:center; width:22%; max-width:100px; }
+    .opponent .name { font-size:0.65rem; opacity:0.7; margin-bottom:2px; white-space:nowrap; }
+    .opponent .hand-fan { display:flex; justify-content:center; position:relative; height:40px; width:100%; }
+    .opponent .hand-fan .back-card { position:absolute; width:26px; height:38px; background:repeating-linear-gradient(45deg,#2a3a4a,#2a3a4a 6px,#1f2f3f 6px,#1f2f3f 12px); border-radius:4px; border:1px solid rgba(255,255,255,0.15); box-shadow:-2px 2px 4px rgba(0,0,0,0.3); }
+    .opponent .display-piles { display:flex; flex-wrap:wrap; justify-content:center; gap:2px; margin-top:2px; min-height:28px; }
+    .opponent .display-piles .pile { display:flex; gap:1px; background:rgba(255,255,255,0.04); border-radius:6px; padding:2px; }
+    .opponent .display-piles .pile .mini-card { width:20px; height:28px; line-height:28px; font-size:0.55rem; text-align:center; border-radius:3px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.1); color:#fff; }
+
+    .table-center { flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:6px; margin:2px 0; min-height:80px; }
+    .table-center .supply-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:center; }
+    .supply-row .supply-group { display:flex; flex-direction:column; align-items:center; }
+    .supply-group .label { font-size:0.5rem; opacity:0.4; margin-bottom:2px; letter-spacing:1px; }
+    .supply-cards { display:flex; gap:3px; }
+    .supply-cards .card { width:34px; height:46px; line-height:46px; text-align:center; border-radius:6px; font-weight:600; font-size:0.9rem; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.1); color:#fff; }
+    .supply-cards .card.joker { background:radial-gradient(circle at 30% 30%,#ffd966,#b8860b); border-color:#f7d875; color:#3d2b00; }
+    .supply-cards .card.back { background:repeating-linear-gradient(45deg,#2a3a4a,#2a3a4a 6px,#1f2f3f 6px,#1f2f3f 12px); border-color:#4a5a6a; font-size:0.7rem; display:flex; align-items:center; justify-content:center; }
+    .supply-cards .discard-card { width:30px; height:40px; line-height:40px; font-size:0.7rem; }
+
+    .abluxx-display { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.9); backdrop-filter:blur(8px); padding:20px 24px; border-radius:30px; border:1px solid rgba(255,255,255,0.1); display:none; flex-direction:column; align-items:center; gap:14px; z-index:30; min-width:200px; text-align:center; box-shadow:0 20px 40px rgba(0,0,0,0.6); }
+    .abluxx-display.open { display:flex; }
+    .abluxx-display .cards-row { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; }
+    .abluxx-display .cards-row .card { width:44px; height:60px; line-height:60px; font-size:1.2rem; border-radius:8px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15); text-align:center; font-weight:600; color:#fff; }
+    .abluxx-display .btn-group { display:flex; gap:12px; }
+    .abluxx-display .btn-group button { padding:8px 22px; border-radius:40px; border:none; font-size:0.95rem; cursor:pointer; transition:0.2s; background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.1); }
+    .abluxx-display .btn-group button.primary { background:#f7d875; color:#1a2a3a; border-color:#f7d875; }
+    .abluxx-display .btn-group button:active { transform:scale(0.95); }
+
+    .my-hand { flex-shrink:0; padding:4px 0 2px; position:relative; height:150px; touch-action:pan-x; }
+    .hand-wrapper { width:100%; height:100%; overflow:hidden; position:relative; }
+    .hand-container { display:flex; align-items:flex-end; height:100%; position:relative; transition:transform 0.25s cubic-bezier(0.2,0.9,0.3,1); will-change:transform; }
+    .hand-card { position:absolute; width:72px; height:100px; border-radius:12px; background:rgba(255,255,255,0.12); border:2px solid rgba(255,255,255,0.2); box-shadow:0 8px 16px rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; font-size:1.8rem; font-weight:700; color:#fff; transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s, border-color 0.2s; touch-action:pan-x; will-change:transform; transform-origin:bottom center; }
+    .hand-card.joker { background:radial-gradient(circle at 30% 30%,#ffd966,#b8860b); border-color:#f7d875; color:#3d2b00; }
+    .hand-card.selected { transform:translateY(-28px) scale(1.04); border-color:#f7d875; box-shadow:0 12px 28px rgba(247,216,117,0.35); z-index:10; }
+    .hand-card.dragging { opacity:0.7; z-index:20; transition:none; }
+
+    .drop-zone { position:absolute; bottom:110px; left:10%; right:10%; height:56px; border:2px dashed rgba(247,216,117,0.25); border-radius:20px; background:rgba(247,216,117,0.04); display:none; align-items:center; justify-content:center; font-size:0.8rem; opacity:0.6; pointer-events:none; transition:0.2s; z-index:5; }
+    .drop-zone.active { display:flex; border-color:#f7d875; background:rgba(247,216,117,0.12); }
+    .drop-zone .drop-label { pointer-events:none; }
+
+    .settings-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); backdrop-filter:blur(6px); display:none; justify-content:center; align-items:center; z-index:100; }
+    .settings-overlay.open { display:flex; }
+    .settings-box { background:#1f2f3f; padding:24px 28px; border-radius:40px; max-width:360px; width:90%; border:1px solid rgba(255,255,255,0.1); box-shadow:0 30px 60px rgba(0,0,0,0.8); }
+    .settings-box h2 { font-weight:300; text-align:center; margin-bottom:16px; color:#f7d875; font-size:1.4rem; }
+    .settings-box .setting { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+    .settings-box .setting label { opacity:0.7; font-size:0.9rem; }
+    .settings-box .setting select, .settings-box .setting input[type="number"] { background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#fff; padding:4px 10px; border-radius:20px; font-size:0.9rem; width:110px; }
+    .settings-box .setting input[type="checkbox"] { width:20px; height:20px; accent-color:#f7d875; }
+    .settings-box .btn-apply { display:block; margin:12px auto 0; background:#f7d875; border:none; padding:10px 28px; border-radius:40px; font-size:1rem; cursor:pointer; color:#1a2a3a; font-weight:600; transition:0.2s; }
+    .settings-box .btn-apply:active { transform:scale(0.95); }
+    .settings-box .btn-close { background:transparent; border:none; color:rgba(255,255,255,0.4); font-size:1.4rem; float:right; cursor:pointer; }
+
+    .card-value-1 { background:#4a7c8a; }
+    .card-value-2 { background:#4a8a6a; }
+    .card-value-3 { background:#6a8a4a; }
+    .card-value-4 { background:#8a7a4a; }
+    .card-value-5 { background:#9a6a4a; }
+    .card-value-6 { background:#9a5a4a; }
+    .card-value-7 { background:#9a4a5a; }
+    .card-value-8 { background:#8a4a6a; }
+    .card-value-9 { background:#7a4a8a; }
+    .card-value-10 { background:#5a4a8a; }
+    .card-value-11 { background:#4a5a8a; }
+    .card-value-12 { background:#4a6a8a; }
+    .card-value-13 { background:#4a7a7a; }
+    .card-value-14 { background:linear-gradient(135deg,#ffd966,#b8860b); }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <div class="header">
+    <h1>Abluxxen</h1>
+    <span class="settings-link" id="settingsToggle">Einstellungen</span>
+  </div>
+
+  <div class="game-board">
+
+    <div class="opponents" id="opponentsContainer"></div>
+
+    <div class="table-center">
+      <div class="supply-row">
+        <div class="supply-group">
+          <span class="label">Vorrat</span>
+          <div class="supply-cards" id="supplyCards"></div>
+        </div>
+        <div class="supply-group">
+          <span class="label">Nachzug</span>
+          <div class="supply-cards" id="drawPileDisplay"><div class="card back">🂠</div></div>
+        </div>
+        <div class="supply-group">
+          <span class="label">Ablage</span>
+          <div class="supply-cards" id="discardDisplay"></div>
+        </div>
+      </div>
+      <div class="abluxx-display" id="abluxxModal">
+        <div style="font-size:1rem; font-weight:300;" id="abluxxTitle">Abluxxen!</div>
+        <div class="cards-row" id="abluxxCards"></div>
+        <div style="font-size:0.85rem; opacity:0.8;" id="abluxxDesc">Was tust du?</div>
+        <div class="btn-group">
+          <button class="primary" id="abluxxTake">Nehmen</button>
+          <button id="abluxxNotTake">Nicht nehmen</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="my-hand" id="myHandArea">
+      <div class="drop-zone" id="dropZone"><span class="drop-label">⬆ Zum Auslegen hier hin ziehen</span></div>
+      <div class="hand-wrapper" id="handWrapper">
+        <div class="hand-container" id="handContainer"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-overlay" id="settingsOverlay">
+    <div class="settings-box">
+      <button class="btn-close" id="settingsClose">✕</button>
+      <h2>Einstellungen</h2>
+      <div class="setting">
+        <label>Bots</label>
+        <select id="botCountSelect"><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option></select>
+      </div>
+      <div class="setting">
+        <label>Schwierigkeit</label>
+        <select id="botDifficulty"><option value="easy">Leicht</option><option value="medium" selected>Mittel</option><option value="hard">Schwer</option></select>
+      </div>
+      <div class="setting">
+        <label>Sortierung</label>
+        <select id="sortOrder"><option value="asc" selected>Klein → Groß</option><option value="desc">Groß → Klein</option></select>
+      </div>
+      <div class="setting">
+        <label>Start zufällig</label>
+        <input type="checkbox" id="randomStarter" checked>
+      </div>
+      <div class="setting">
+        <label>Ablage mischen</label>
+        <input type="checkbox" id="reshuffleDiscard" checked>
+      </div>
+      <button class="btn-apply" id="applySettings">Übernehmen & Neustart</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function shuffle(a) { for (let i=a.length-1; i>0; i--) { const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+  function createDeck() { const d=[]; for(let v=1;v<=13;v++) for(let i=0;i<8;i++) d.push(v); for(let i=0;i<5;i++) d.push(14); return shuffle(d); }
+  function cardDisplay(v) { return v===14?'★':v; }
+  function cardClass(v) { return v===14?'joker':'card-value-'+v; }
+
+  let G = {
+    players: [],
+    currentPlayer: 0,
+    supply: [],
+    drawPile: [],
+    discardPile: [],
+    gameOver: false,
+    phase: 'idle',
+    playedValue: null,
+    playedCount: 0,
+    abluxxQueue: [],
+    abluxxIndex: 0,
+    selectedIndices: [],
+    handScrollOffset: 0,
+  };
+
+  let S = { botCount:3, difficulty:'medium', sortOrder:'asc', randomStarter:true, reshuffleDiscard:true };
+
+  const opponentsEl = document.getElementById('opponentsContainer');
+  const handContainer = document.getElementById('handContainer');
+  const handWrapper = document.getElementById('handWrapper');
+  const supplyCardsEl = document.getElementById('supplyCards');
+  const drawPileDisplay = document.getElementById('drawPileDisplay');
+  const discardDisplay = document.getElementById('discardDisplay');
+  const dropZone = document.getElementById('dropZone');
+  const abluxxModal = document.getElementById('abluxxModal');
+  const abluxxTitle = document.getElementById('abluxxTitle');
+  const abluxxCards = document.getElementById('abluxxCards');
+  const abluxxDesc = document.getElementById('abluxxDesc');
+  const abluxxTake = document.getElementById('abluxxTake');
+  const abluxxNotTake = document.getElementById('abluxxNotTake');
+  const settingsOverlay = document.getElementById('settingsOverlay');
+  const settingsToggle = document.getElementById('settingsToggle');
+  const settingsClose = document.getElementById('settingsClose');
+  const applySettings = document.getElementById('applySettings');
+
+  function renderAll() {
+    renderOpponents();
+    renderHand();
+    renderSupply();
+    renderDrawAndDiscard();
+    updateDropZone();
+  }
+
+  function renderOpponents() {
+    opponentsEl.innerHTML = '';
+    G.players.forEach((p, idx) => {
+      if (idx === 0) return;
+      const div = document.createElement('div');
+      div.className = 'opponent';
+      const name = document.createElement('div');
+      name.className = 'name';
+      name.textContent = p.name + (idx===G.currentPlayer && !G.gameOver ? ' ●' : '');
+      div.appendChild(name);
+      const fan = document.createElement('div');
+      fan.className = 'hand-fan';
+      const count = p.hand.length;
+      for (let i=0; i<count; i++) {
+        const back = document.createElement('div');
+        back.className = 'back-card';
+        const angle = (i - (count-1)/2) * 2.5;
+        const x = i * 7 - (count-1)*3.5;
+        back.style.transform = `translateX(${x}px) rotate(${angle}deg)`;
+        back.style.zIndex = i;
+        fan.appendChild(back);
+      }
+      div.appendChild(fan);
+      const displayDiv = document.createElement('div');
+      displayDiv.className = 'display-piles';
+      if (p.display.length > 0) {
+        const top = p.display[p.display.length-1];
+        const pile = document.createElement('div');
+        pile.className = 'pile';
+        top.cards.forEach(v => {
+          const c = document.createElement('div');
+          c.className = 'mini-card ' + cardClass(v);
+          c.textContent = cardDisplay(v);
+          pile.appendChild(c);
+        });
+        displayDiv.appendChild(pile);
+      }
+      div.appendChild(displayDiv);
+      opponentsEl.appendChild(div);
+    });
+  }
+
+  function renderHand() {
+    const hand = G.players[0].hand;
+    if (!hand) return;
+    const sorted = [...hand].sort((a,b) => S.sortOrder==='asc' ? a-b : b-a);
+    handContainer.innerHTML = '';
+    if (sorted.length === 0) return;
+    const containerWidth = handWrapper.clientWidth || window.innerWidth;
+    const cardWidth = 72;
+    const cardHeight = 100;
+    const spacing = Math.min(44, (containerWidth - cardWidth) / (sorted.length || 1));
+    const totalWidth = (sorted.length-1) * spacing + cardWidth;
+    const startX = (containerWidth - totalWidth) / 2;
+
+    sorted.forEach((val, idx) => {
+      const card = document.createElement('div');
+      card.className = 'hand-card ' + cardClass(val);
+      card.textContent = cardDisplay(val);
+      if (G.selectedIndices.includes(idx)) card.classList.add('selected');
+      const center = (sorted.length-1) / 2;
+      const offset = idx - center;
+      const angle = offset * 4;
+      const xPos = startX + idx * spacing + (cardWidth/2);
+      const yOffset = -Math.abs(offset) * 3;
+      card.style.left = (xPos - cardWidth/2) + 'px';
+      card.style.bottom = (8 + yOffset) + 'px';
+      card.style.transform = `rotate(${angle}deg)`;
+      card.style.zIndex = idx;
+      card.dataset.index = idx;
+      card.addEventListener('touchstart', (e) => onCardTouchStart(e, idx), {passive:false});
+      card.addEventListener('mousedown', (e) => onCardMouseDown(e, idx));
+      handContainer.appendChild(card);
+    });
+
+    const offset = G.handScrollOffset || 0;
+    handContainer.style.transform = `translateX(${offset}px)`;
+  }
+
+  function renderSupply() {
+    supplyCardsEl.innerHTML = '';
+    G.supply.forEach(v => {
+      const c = document.createElement('div');
+      c.className = 'card ' + cardClass(v);
+      c.textContent = cardDisplay(v);
+      supplyCardsEl.appendChild(c);
+    });
+  }
+
+  function renderDrawAndDiscard() {
+    drawPileDisplay.innerHTML = '';
+    if (G.drawPile.length > 0) {
+      const c = document.createElement('div');
+      c.className = 'card back';
+      c.textContent = G.drawPile.length;
+      drawPileDisplay.appendChild(c);
+    } else {
+      const c = document.createElement('div');
+      c.className = 'card back';
+      c.textContent = '0';
+      drawPileDisplay.appendChild(c);
+    }
+    discardDisplay.innerHTML = '';
+    if (G.discardPile.length > 0) {
+      const show = G.discardPile.slice(-3);
+      show.forEach(v => {
+        const c = document.createElement('div');
+        c.className = 'card discard-card ' + cardClass(v);
+        c.textContent = cardDisplay(v);
+        discardDisplay.appendChild(c);
+      });
+    } else {
+      const c = document.createElement('div');
+      c.className = 'card discard-card';
+      c.textContent = '—';
+      c.style.opacity = '0.3';
+      discardDisplay.appendChild(c);
+    }
+  }
+
+  function updateDropZone() {
+    const hasSelected = G.selectedIndices.length > 0 && G.phase==='idle' && G.currentPlayer===0 && !G.gameOver;
+    dropZone.classList.toggle('active', hasSelected);
+    if (hasSelected) {
+      const hand = G.players[0].hand;
+      const values = G.selectedIndices.map(i => hand[i]);
+      const allSame = values.every(v => v === values[0]);
+      const label = allSame ? `${values.length} × ${cardDisplay(values[0])} auslegen` : '⚠️ Nur gleiche Werte';
+      dropZone.querySelector('.drop-label').textContent = '⬆ ' + label;
+      dropZone.style.borderColor = allSame ? '#f7d875' : '#ff6b6b';
+    } else {
+      dropZone.querySelector('.drop-label').textContent = '⬆ Zum Auslegen hier hin ziehen';
+      dropZone.style.borderColor = 'rgba(247,216,117,0.25)';
+    }
+  }
+
+  let dragData = null;
+
+  function onCardTouchStart(e, idx) {
+    if (G.currentPlayer!==0 || G.phase!=='idle' || G.gameOver) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    startDrag(idx, touch.clientX, touch.clientY, e.currentTarget);
+    document.addEventListener('touchmove', onTouchMove, {passive:false});
+    document.addEventListener('touchend', onTouchEnd, {passive:false});
+  }
+
+  function onCardMouseDown(e, idx) {
+    if (G.currentPlayer!==0 || G.phase!=='idle' || G.gameOver) return;
+    e.preventDefault();
+    startDrag(idx, e.clientX, e.clientY, e.currentTarget);
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }
+
+  function startDrag(idx, clientX, clientY, cardEl) {
+    const rect = cardEl.getBoundingClientRect();
+    dragData = {
+      index: idx,
+      startX: clientX,
+      startY: clientY,
+      cardEl: cardEl,
+      offsetX: clientX - rect.left,
+      offsetY: clientY - rect.top,
+      moved: false,
+    };
+    // Karte auswählen (toggle)
+    const pos = G.selectedIndices.indexOf(idx);
+    if (pos >= 0) {
+      // Wenn bereits ausgewählt, bleibt sie ausgewählt – wir wollen sie aber nicht abwählen beim Drag
+      // also nichts tun
+    } else {
+      G.selectedIndices.push(idx);
+      renderAll();
+    }
+    // Karte zum Mitziehen vorbereiten
+    cardEl.style.position = 'fixed';
+    cardEl.style.left = (clientX - dragData.offsetX) + 'px';
+    cardEl.style.top = (clientY - dragData.offsetY) + 'px';
+    cardEl.style.width = '72px';
+    cardEl.style.height = '100px';
+    cardEl.style.zIndex = 50;
+    cardEl.style.pointerEvents = 'none';
+    cardEl.classList.add('dragging');
+    dropZone.classList.add('active');
+    // Alle anderen ausgewählten Karten ebenfalls anheben (visuell)
+    document.querySelectorAll('.hand-card.selected').forEach(el => {
+      if (el !== cardEl) {
+        el.style.zIndex = 45;
+        el.style.transition = 'transform 0.1s';
+      }
+    });
+  }
+
+  function onTouchMove(e) { e.preventDefault(); if (dragData) handleDragMove(e.touches[0].clientX, e.touches[0].clientY); }
+  function onMouseMove(e) { if (dragData) handleDragMove(e.clientX, e.clientY); }
+
+  function handleDragMove(clientX, clientY) {
+    if (!dragData) return;
+    const dx = clientX - dragData.startX;
+    const dy = clientY - dragData.startY;
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) dragData.moved = true;
+    const el = dragData.cardEl;
+    el.style.left = (clientX - dragData.offsetX) + 'px';
+    el.style.top = (clientY - dragData.offsetY) + 'px';
+  }
+
+  function onTouchEnd(e) { document.removeEventListener('touchmove', onTouchMove); document.removeEventListener('touchend', onTouchEnd); finishDrag(e.changedTouches[0].clientX, e.changedTouches[0].clientY); }
+  function onMouseUp(e) { document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); finishDrag(e.clientX, e.clientY); }
+
+  function finishDrag(clientX, clientY) {
+    if (!dragData) return;
+    const { index, moved, cardEl } = dragData;
+    cardEl.style.position = '';
+    cardEl.style.left = '';
+    cardEl.style.top = '';
+    cardEl.style.width = '';
+    cardEl.style.height = '';
+    cardEl.style.zIndex = '';
+    cardEl.style.pointerEvents = '';
+    cardEl.classList.remove('dragging');
+    document.querySelectorAll('.hand-card.selected').forEach(el => {
+      el.style.zIndex = '';
+      el.style.transition = '';
+    });
+    dropZone.classList.remove('active');
+
+    if (moved) {
+      const dropRect = dropZone.getBoundingClientRect();
+      if (clientX >= dropRect.left && clientX <= dropRect.right &&
+          clientY >= dropRect.top && clientY <= dropRect.bottom) {
+        attemptPlay();
+      } else {
+        // Falls verschoben aber nicht gedroppt -> Auswahl beibehalten
+      }
+    } else {
+      // Keine Bewegung -> nur Auswahl togglen (wenn nicht schon ausgewählt)
+      const pos = G.selectedIndices.indexOf(index);
+      if (pos >= 0) {
+        G.selectedIndices.splice(pos, 1);
+      } else {
+        G.selectedIndices.push(index);
+      }
+      renderAll();
+    }
+    dragData = null;
+  }
+
+  function attemptPlay() {
+    if (G.currentPlayer!==0 || G.phase!=='idle' || G.gameOver) return;
+    const hand = G.players[0].hand;
+    if (G.selectedIndices.length === 0) return;
+    const values = G.selectedIndices.map(i => hand[i]);
+    const allSame = values.every(v => v === values[0]);
+    if (!allSame) {
+      alert('Du kannst nur Karten mit gleichem Wert auslegen!');
+      return;
+    }
+    const value = values[0];
+    const cardsToPlay = G.selectedIndices.map(i => hand[i]);
+    G.selectedIndices.sort((a,b)=>b-a);
+    for (let idx of G.selectedIndices) hand.splice(idx, 1);
+    G.selectedIndices = [];
+    G.players[0].display.push({ value, cards: cardsToPlay });
+    G.playedValue = value;
+    G.playedCount = cardsToPlay.length;
+    G.phase = 'abluxxing';
+
+    const total = G.players.length;
+    const start = (G.currentPlayer + 1) % total;
+    const targets = [];
+    for (let i=0; i<total-1; i++) {
+      const idx = (start + i) % total;
+      if (idx === G.currentPlayer) continue;
+      targets.push(idx);
+    }
+    G.abluxxQueue = targets.map(tIdx => {
+      const p = G.players[tIdx];
+      if (p.display.length === 0) return null;
+      const top = p.display[p.display.length-1];
+      if (top.cards.length === G.playedCount && top.value < G.playedValue) {
+        return { targetIdx: tIdx, cards: top.cards.slice() };
+      }
+      return null;
+    }).filter(x => x !== null);
+    G.abluxxIndex = 0;
+    renderAll();
+    processAbluxx();
+  }
+
+  function processAbluxx() {
+    if (G.abluxxIndex >= G.abluxxQueue.length) {
+      finishTurn();
+      return;
+    }
+    const entry = G.abluxxQueue[G.abluxxIndex];
+    const targetIdx = entry.targetIdx;
+    const target = G.players[targetIdx];
+    target.display.pop();
+
+    if (G.currentPlayer === 0) {
+      showAbluxxModal(entry.cards, target.name, () => {
+        G.players[0].hand.push(...entry.cards);
+        drawCardsFor(targetIdx, entry.cards.length);
+        G.abluxxIndex++;
+        renderAll();
+        processAbluxx();
+      }, () => {
+        if (target.isBot) {
+          const takeBack = botTakeBack(targetIdx, entry.cards);
+          if (takeBack) target.hand.push(...entry.cards);
+          else { G.discardPile.push(...entry.cards); drawCardsFor(targetIdx, entry.cards.length); }
+        } else {
+          target.hand.push(...entry.cards);
+        }
+        G.abluxxIndex++;
+        renderAll();
+        processAbluxx();
+      });
+    } else {
+      const take = botTakeAbluxxed(G.currentPlayer, entry.cards);
+      if (take) {
+        G.players[G.currentPlayer].hand.push(...entry.cards);
+        drawCardsFor(targetIdx, entry.cards.length);
+      } else {
+        if (target.isBot) {
+          const takeBack = botTakeBack(targetIdx, entry.cards);
+          if (takeBack) target.hand.push(...entry.cards);
+          else { G.discardPile.push(...entry.cards); drawCardsFor(targetIdx, entry.cards.length); }
+        } else {
+          target.hand.push(...entry.cards);
+        }
+      }
+      G.abluxxIndex++;
+      renderAll();
+      setTimeout(processAbluxx, 400);
+    }
+  }
+
+  function showAbluxxModal(cards, opponentName, onTake, onNotTake) {
+    abluxxModal.classList.add('open');
+    abluxxTitle.textContent = 'Abluxxen bei ' + opponentName;
+    abluxxCards.innerHTML = '';
+    cards.forEach(v => {
+      const c = document.createElement('div');
+      c.className = 'card ' + cardClass(v);
+      c.textContent = cardDisplay(v);
+      abluxxCards.appendChild(c);
+    });
+    abluxxDesc.textContent = 'Möchtest du diese Karten nehmen?';
+    abluxxTake.onclick = () => { abluxxModal.classList.remove('open'); onTake(); };
+    abluxxNotTake.onclick = () => { abluxxModal.classList.remove('open'); onNotTake(); };
+  }
+
+  function drawCardsFor(playerIdx, count) {
+    const p = G.players[playerIdx];
+    for (let i=0; i<count; i++) {
+      if (p.isBot) {
+        const fromSupply = botDrawSource(playerIdx);
+        if (fromSupply && G.supply.length > 0) p.hand.push(G.supply.pop());
+        else if (G.drawPile.length > 0) p.hand.push(G.drawPile.pop());
+        else if (S.reshuffleDiscard && G.discardPile.length > 0) {
+          G.drawPile = shuffle(G.discardPile); G.discardPile = [];
+          p.hand.push(G.drawPile.pop());
+        } else break;
+      } else {
+        if (G.drawPile.length > 0) p.hand.push(G.drawPile.pop());
+        else if (S.reshuffleDiscard && G.discardPile.length > 0) {
+          G.drawPile = shuffle(G.discardPile); G.discardPile = [];
+          p.hand.push(G.drawPile.pop());
+        } else break;
+      }
+    }
+  }
+
+  function finishTurn() {
+    while (G.supply.length < 6) {
+      if (G.drawPile.length > 0) G.supply.push(G.drawPile.pop());
+      else if (S.reshuffleDiscard && G.discardPile.length > 0) {
+        G.drawPile = shuffle(G.discardPile); G.discardPile = [];
+        G.supply.push(G.drawPile.pop());
+      } else break;
+    }
+    G.phase = 'idle';
+    G.selectedIndices = [];
+    G.playedValue = null;
+    G.playedCount = 0;
+    renderAll();
+
+    if (G.players[G.currentPlayer].hand.length === 0) { endGame(); return; }
+
+    G.currentPlayer = (G.currentPlayer + 1) % G.players.length;
+    renderAll();
+    if (G.currentPlayer !== 0) setTimeout(startBotTurn, 500);
+  }
+
+  function startBotTurn() {
+    if (G.gameOver) return;
+    const botIdx = G.currentPlayer;
+    const bot = G.players[botIdx];
+    if (!bot.isBot) return;
+    const chosen = botPlayValue(botIdx);
+    if (chosen === null || bot.hand.length === 0) { finishTurn(); return; }
+    const cardsToPlay = bot.hand.filter(v => v === chosen);
+    bot.hand = bot.hand.filter(v => v !== chosen);
+    bot.display.push({ value: chosen, cards: cardsToPlay });
+    G.playedValue = chosen;
+    G.playedCount = cardsToPlay.length;
+    G.phase = 'abluxxing';
+
+    const total = G.players.length;
+    const start = (botIdx + 1) % total;
+    const targets = [];
+    for (let i=0; i<total-1; i++) {
+      const idx = (start + i) % total;
+      if (idx === botIdx) continue;
+      targets.push(idx);
+    }
+    G.abluxxQueue = targets.map(tIdx => {
+      const p = G.players[tIdx];
+      if (p.display.length === 0) return null;
+      const top = p.display[p.display.length-1];
+      if (top.cards.length === G.playedCount && top.value < G.playedValue) {
+        return { targetIdx: tIdx, cards: top.cards.slice() };
+      }
+      return null;
+    }).filter(x => x !== null);
+    G.abluxxIndex = 0;
+    renderAll();
+    setTimeout(processAbluxx, 600);
+  }
+
+  function botPlayValue(botIdx) {
+    const hand = G.players[botIdx].hand;
+    if (hand.length === 0) return null;
+    const counts = {};
+    hand.forEach(v => counts[v] = (counts[v]||0)+1);
+    let max=0, candidates=[];
+    for (let v in counts) {
+      const c = counts[v];
+      if (c > max) { max=c; candidates=[parseInt(v)]; }
+      else if (c === max) candidates.push(parseInt(v));
+    }
+    candidates.sort((a,b)=>b-a);
+    if (S.difficulty==='easy' && Math.random()<0.3) return hand[Math.floor(Math.random()*hand.length)];
+    return candidates[0];
+  }
+
+  function botTakeAbluxxed(botIdx, cards) {
+    const hand = G.players[botIdx].hand;
+    for (let v of cards) if (hand.includes(v)) return true;
+    if (cards.some(v => v>=10)) return true;
+    if (hand.length < 8) return true;
+    if (S.difficulty==='hard' && Math.random()<0.6) return true;
+    return false;
+  }
+
+  function botTakeBack(botIdx, cards) {
+    const hand = G.players[botIdx].hand;
+    for (let v of cards) if (hand.includes(v)) return true;
+    if (hand.length < 6) return true;
+    if (cards.some(v => v>=10)) return true;
+    if (S.difficulty==='hard' && Math.random()<0.3) return true;
+    return false;
+  }
+
+  function botDrawSource(botIdx) {
+    const hand = G.players[botIdx].hand;
+    for (let v of G.supply) if (hand.includes(v)) return true;
+    for (let v of G.supply) if (v>=10) return true;
+    if (S.difficulty==='hard' && Math.random()<0.3) return true;
+    return false;
+  }
+
+  function endGame() {
+    G.gameOver = true;
+    G.phase = 'idle';
+    let results = G.players.map((p,idx) => {
+      const plus = p.display.reduce((sum, pile) => sum + pile.cards.length, 0);
+      const minus = p.hand.length;
+      return { name: p.name, score: plus - minus, handCount: p.hand.length };
+    });
+    results.sort((a,b) => b.score - a.score || a.handCount - b.handCount);
+    let msg = 'Spielende!\n';
+    results.forEach((r,i) => msg += `${i+1}. ${r.name}: ${r.score} Punkte\n`);
+    alert(msg);
+    renderAll();
+  }
+
+  function initGame() {
+    S.botCount = parseInt(document.getElementById('botCountSelect').value);
+    S.difficulty = document.getElementById('botDifficulty').value;
+    S.sortOrder = document.getElementById('sortOrder').value;
+    S.randomStarter = document.getElementById('randomStarter').checked;
+    S.reshuffleDiscard = document.getElementById('reshuffleDiscard').checked;
+
+    const deck = createDeck();
+    const total = 1 + S.botCount;
+    const perPlayer = 13;
+    if (deck.length < total*perPlayer) { alert('Zu wenig Karten!'); return; }
+
+    G.players = [];
+    G.players.push({ name: 'Du', hand: [], display: [], isBot: false });
+    for (let i=1; i<=S.botCount; i++) G.players.push({ name: 'Bot '+i, hand: [], display: [], isBot: true });
+    for (let p of G.players) p.hand = deck.splice(0, perPlayer);
+    G.supply = deck.splice(0, 6);
+    G.drawPile = deck;
+    G.discardPile = [];
+    G.gameOver = false;
+    G.phase = 'idle';
+    G.selectedIndices = [];
+    G.abluxxQueue = [];
+    G.abluxxIndex = 0;
+    G.handScrollOffset = 0;
+    G.currentPlayer = S.randomStarter ? Math.floor(Math.random() * total) : 0;
+    renderAll();
+    if (G.currentPlayer !== 0) setTimeout(startBotTurn, 600);
+  }
+
+  settingsToggle.addEventListener('click', () => settingsOverlay.classList.toggle('open'));
+  settingsClose.addEventListener('click', () => settingsOverlay.classList.remove('open'));
+  applySettings.addEventListener('click', () => { settingsOverlay.classList.remove('open'); initGame(); });
+
+  let scrollStartX = 0;
+  let scrollStartOffset = 0;
+  let isScrolling = false;
+  handWrapper.addEventListener('touchstart', (e) => {
+    if (e.target.closest('.hand-card')) return;
+    const touch = e.touches[0];
+    scrollStartX = touch.clientX;
+    scrollStartOffset = G.handScrollOffset || 0;
+    isScrolling = true;
+  }, {passive:true});
+  handWrapper.addEventListener('touchmove', (e) => {
+    if (!isScrolling) return;
+    const touch = e.touches[0];
+    const delta = touch.clientX - scrollStartX;
+    G.handScrollOffset = scrollStartOffset + delta;
+    const containerWidth = handWrapper.clientWidth;
+    const totalWidth = handContainer.scrollWidth || 0;
+    const maxOffset = Math.max(0, totalWidth - containerWidth + 40);
+    G.handScrollOffset = Math.min(0, Math.max(-maxOffset, G.handScrollOffset));
+    handContainer.style.transform = `translateX(${G.handScrollOffset}px)`;
+  }, {passive:true});
+  handWrapper.addEventListener('touchend', () => { isScrolling = false; }, {passive:true});
+
+  window.addEventListener('resize', renderHand);
+
+  initGame();
+</script>
+</body>
+</html>
